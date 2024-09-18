@@ -43,7 +43,7 @@ class CTCLabelConverter(object):
                 text_index.append(self.dict[char])
 
             batch_text[i][:len(text_index)] = torch.LongTensor(text_index)
-        return (batch_text.to(device), torch.IntTensor(length).to(device))
+        return batch_text.to(device), torch.IntTensor(length).to(device)
 
     def decode(self, text_index, length):
         """ convert text-index into text-label. """
@@ -88,7 +88,7 @@ class CTCLabelConverterForBaiduWarpctc(object):
         text = ''.join(text)
         text = [self.dict[char] for char in text]
 
-        return (torch.IntTensor(text), torch.IntTensor(length))
+        return torch.IntTensor(text), torch.IntTensor(length)
 
     def decode(self, text_index, length):
         """ convert text-index into text-label. """
@@ -144,7 +144,7 @@ class AttnLabelConverter(object):
             text.append('[s]')
             text = [self.dict[char] for char in text]
             batch_text[i][1:1 + len(text)] = torch.LongTensor(text)  # batch_text[:, 0] = [GO] token
-        return (batch_text.to(device), torch.IntTensor(length).to(device))
+        return batch_text.to(device), torch.IntTensor(length).to(device)
 
     def decode(self, text_index, length):
         """ convert text-index into text-label. """

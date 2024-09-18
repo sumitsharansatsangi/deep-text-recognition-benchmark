@@ -22,7 +22,7 @@ class Batch_Balanced_Dataset(object):
         For example, when select_data is "MJ-ST" and batch_ratio is "0.5-0.5",
         the 50% of the batch is filled with MJ and the other 50% of the batch is filled with ST.
         """
-        log = open(f'./saved_models/{opt.exp_name}/log_dataset.txt', 'a')
+        log = open(f'{opt.save_model_to}/{opt.exp_name}/log_dataset.txt', 'a')
         dashed_line = '-' * 80
         print(dashed_line)
         log.write(dashed_line + '\n')
@@ -38,10 +38,10 @@ class Batch_Balanced_Dataset(object):
         batch_size_list = []
         Total_batch_size = 0
         for selected_d, batch_ratio_d in zip(opt.select_data, opt.batch_ratio):
-             _batch_size = max(round(opt.batch_size * batch_ratio_d), 1)
+            _batch_size = max(round(opt.batch_size * batch_ratio_d), 1)
             print(dashed_line)
             log.write(dashed_line + '\n')
-            _dataset, _dataset_log = hierarchical_dataset(root=opt.train_data, opt=opt, select_data=[selected_d])
+            _dataset, _dataset_log = hierarchical_dataset(root=opt.train_data, opt=opt, select_data=selected_d)
             total_number_dataset = len(_dataset)
             log.write(_dataset_log)
 
@@ -97,7 +97,7 @@ class Batch_Balanced_Dataset(object):
             except ValueError:
                 pass
 
-        balanced_batch_images = torch.cat(balanced_batch_images, 0)
+        balanced_batch_images = torch.cat(balanced_batch_images)
 
         return balanced_batch_images, balanced_batch_texts
 
@@ -136,10 +136,10 @@ class LmdbDataset(Dataset):
         self.opt = opt
         self.env = lmdb.open(root, max_readers=32, readonly=True, lock=False, readahead=False, meminit=False)
         if not self.env:
-            print('cannot create lmdb from %s' % (root))
+            print('cannot create lmdb from %s' % root)
             sys.exit(0)
 
-        with self.env.begin(write=False) as txn:
+        with self.env.begin() as txn:
             nSamples = int(txn.get('num-samples'.encode()))
             self.nSamples = nSamples
 
@@ -184,7 +184,7 @@ class LmdbDataset(Dataset):
         assert index <= len(self), 'index range error'
         index = self.filtered_index_list[index]
 
-        with self.env.begin(write=False) as txn:
+        with self.env.begin() as txn:
             label_key = 'label-%09d'.encode() % index
             label = txn.get(label_key).decode('utf-8')
             img_key = 'image-%09d'.encode() % index
@@ -215,7 +215,7 @@ class LmdbDataset(Dataset):
             out_of_char = f'[^{self.opt.character}]'
             label = re.sub(out_of_char, '', label)
 
-        return (img, label)
+        return img, label
 
 
 class RawDataset(Dataset):
@@ -252,12 +252,12 @@ class RawDataset(Dataset):
             else:
                 img = Image.new('L', (self.opt.imgW, self.opt.imgH))
 
-        return (img, self.image_path_list[index])
+        return img, self.image_path_list[index]
 
 
 class ResizeNormalize(object):
 
-    def __init__(self, size, interpolation=Image.BICUBIC):
+    def __init__(self, size, interpolation=Image.Resampling.BICUBIC):
         self.size = size
         self.interpolation = interpolation
         self.toTensor = transforms.ToTensor()
@@ -314,16 +314,16 @@ class AlignCollate(object):
                 else:
                     resized_w = math.ceil(self.imgH * ratio)
 
-                resized_image = image.resize((resized_w, self.imgH), Image.BICUBIC)
+                resized_image = image.resize((resized_w, self.imgH), Image.Resampling.BICUBIC)
                 resized_images.append(transform(resized_image))
                 # resized_image.save('./image_test/%d_test.jpg' % w)
 
-            image_tensors = torch.cat([t.unsqueeze(0) for t in resized_images], 0)
+            image_tensors = torch.cat([t.unsqueeze(0) for t in resized_images])
 
         else:
             transform = ResizeNormalize((self.imgW, self.imgH))
             image_tensors = [transform(image) for image in images]
-            image_tensors = torch.cat([t.unsqueeze(0) for t in image_tensors], 0)
+            image_tensors = torch.cat([t.unsqueeze(0) for t in image_tensors])
 
         return image_tensors, labels
 

@@ -11,6 +11,7 @@ import torch.nn.init as init
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
+from torch.nn import CTCLoss
 from tqdm.auto import tqdm
 from utils import CTCLabelConverter, CTCLabelConverterForBaiduWarpctc, AttnLabelConverter, Averager
 from dataset import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
@@ -95,8 +96,6 @@ def train(opt):
     """ setup loss """
     if 'CTC' in opt.Prediction:
         if opt.baiduCTC:
-            # need to install warpctc. see our guideline.
-            from warpctc_pytorch import CTCLoss 
             criterion = CTCLoss()
         else:
             criterion = torch.nn.CTCLoss(zero_infinity=True).to(device)
@@ -147,7 +146,7 @@ def train(opt):
     best_norm_ED = -1
     iteration = start_iter
     pbar = tqdm(total=opt.num_iter)
-    while(True):
+    while True:
         # train part
         image_tensors, labels = train_dataset.get_batch()
         image = image_tensors.to(device)
@@ -229,7 +228,7 @@ def train(opt):
             print('end the training')
             sys.exit()
         iteration += 1
-        pbar.update(1)
+        pbar.update()
     pbar.close()
 
 if __name__ == '__main__':
